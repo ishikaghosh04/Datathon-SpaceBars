@@ -222,6 +222,7 @@ def inspection_map(records, widget_key, use_basemap):
 
 def risk_bars(records, widget_key):
     selected = alt.selection_point(name="pick_well", fields=["well_id"], toggle=False, clear=False)
+    has_selection = any(row["is_selected"] for row in records)
     bars = alt.Chart(alt.Data(values=records)).mark_bar(cornerRadiusEnd=4).encode(
         x=alt.X("risk:Q", title="Predicted failure within 30 days",
                 scale=alt.Scale(domain=[0, 1]), axis=alt.Axis(format="%")),
@@ -229,6 +230,11 @@ def risk_bars(records, widget_key):
         color=alt.Color("band:N", legend=None,
                         scale=alt.Scale(domain=["50% and above", "25–49%", "Below 25%"],
                                         range=["#A0462C", "#AC6D24", "#236D38"])),
+        opacity=alt.condition(
+            alt.datum.is_selected,
+            alt.value(1.0),
+            alt.value(0.4 if has_selection else 1.0),
+        ),
         tooltip=[alt.Tooltip("rank:Q", title="Rank"), alt.Tooltip("well_id:N", title="Well"),
                  alt.Tooltip("risk:Q", title="30-day risk", format=".1%"),
                  alt.Tooltip("reason:N", title="Flag reason")],
@@ -272,9 +278,25 @@ if section == "Inspect":
         st.caption("Click a pin or a bar to open that well’s details. Map and bars show up to 10 ranked wells.")
         map_column, bars_column = st.columns([1.15, 1], gap="medium")
         current_well = st.session_state[widget_key]
-        mapped = [dict(row, **locations[row["well_id"]], marker_color=risk_color(row["risk"]),
-                       marker_size=11 if row["well_id"] == current_well else 7)
-                  for row in top if row["well_id"] in locations]
+        top = [
+            dict(row, is_selected=row["well_id"] == current_well)
+            for row in top
+        ]
+        has_selection = any(row["is_selected"] for row in top)
+
+        mapped = [
+            dict(
+                row,
+                **locations[row["well_id"]],
+                marker_color=[
+                    *risk_color(row["risk"])[:3],
+                    255 if row["is_selected"] or not has_selection else 100,
+                ],
+                marker_size=9 if row["is_selected"] else 6,
+            )
+            for row in top
+            if row["well_id"] in locations
+        ]
         with map_column:
             st.caption("Surface locations · " + ("synthetic demo" if sample else "daily_production.parquet"))
             if mapped:

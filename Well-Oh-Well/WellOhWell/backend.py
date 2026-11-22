@@ -258,5 +258,12 @@ def well_locations(path, cutoff):
                 ORDER BY production_date DESC, latitude, longitude, well_name, field_operating_area
             ) = 1
         """, [str(path), cutoff]).fetchall()
-    return {well: {"latitude": lat, "longitude": lon, "name": name or well,
-                   "area": area or "Area unavailable"} for well, lat, lon, name, area in rows}
+    return {
+         well: {
+            "latitude": float(lat),
+            "longitude": float(lon),
+            "name": name or well,
+            "area": area or "Area unavailable",
+        }
+        for well, lat, lon, name, area in rows
+    }
