@@ -227,8 +227,10 @@ def offline_inspection_map(records, widget_key):
     has_selection = any(row["is_selected"] for row in records)
     locations = alt.Chart(alt.Data(values=records)).mark_point(filled=True, stroke="white",
                                                                strokeWidth=1).encode(
-        x=alt.X("longitude:Q", title="Longitude"),
-        y=alt.Y("latitude:Q", title="Latitude"),
+        x=alt.X("longitude:Q", title="Longitude",
+                scale=alt.Scale(zero=False), axis=alt.Axis(format=".2f")),
+        y=alt.Y("latitude:Q", title="Latitude",
+                scale=alt.Scale(zero=False), axis=alt.Axis(format=".2f")),
         color=alt.Color("band:N", legend=None,
                         scale=alt.Scale(domain=["50% and above", "25–49%", "Below 25%"],
                                         range=["#A0462C", "#AC6D24", "#236D38"])),
@@ -335,6 +337,7 @@ if section == "Inspect":
                 if use_basemap:
                     inspection_map(mapped, widget_key, use_basemap)
                 else:
+                    st.caption("Offline well locations · click a dot to select a well.")
                     offline_inspection_map(mapped, widget_key)
                 st.caption("Risk colors: green below 25%, amber 25% to below 50%, rust 50% and above.")
                 if len(mapped) < len(top):
