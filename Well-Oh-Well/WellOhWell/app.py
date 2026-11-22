@@ -544,7 +544,7 @@ else:
                            "Days observed": len(values)}
                           for period, values in [("Before", before), ("After", after)]]
             summary = alt.Chart(alt.Data(values=comparison)).mark_bar(cornerRadiusEnd=4).encode(
-                x=alt.X("Mean oil (m3/day):Q", axis=alt.Axis(tickCount=6)),
+                x=alt.X("Mean oil (m³/day):Q", axis=alt.Axis(tickCount=6)),
                 y=alt.Y("Period:N", title=None, sort=["Before", "After"]),
                 color=alt.Color("Period:N", legend=None,
                                 scale=alt.Scale(domain=["Before", "After"], range=["#837565", "#236D38"])),
