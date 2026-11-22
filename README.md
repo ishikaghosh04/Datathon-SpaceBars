@@ -18,6 +18,14 @@ py -3.12 -m venv .venv
 
 If Windows has Python 3.12 on the `python` command and `py` is unavailable, use `python -m venv .venv` for the first command.
 
+If `py` is unavailable or `python` opens the Microsoft Store, you can use `uv` if it is installed. Run these commands in PowerShell from `Well-Oh-Well/WellOhWell`, the folder containing `app.py` and `requirements.txt`.
+
+```powershell
+uv venv --python 3.12 .venv
+uv pip install --python .\.venv\Scripts\python.exe -r requirements.txt
+.\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
+```
+
 ### macOS or Linux
 
 ```sh
@@ -65,6 +73,7 @@ The supplied Team snapshot is scored as of **June 30, 2026**. The replay date me
 ## Canary and Axiom
 
 Start with **Local Parquet** in the Streamlit sidebar for the standard walkthrough. There are two optional Canary integrations.
+**For reviewers:** Open [Canary Dashboard.pdf](Canary%20Dashboard.pdf) to see the Production Overview in its Full history, June, and July views. The PDF requires no Canary login. The saved Well History and Production Overview applications require access to our Canary instance. The steps below show how to create a well-history chart on your own configured Canary instance.
 
 ### Open a well in Axiom
 
