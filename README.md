@@ -1,4 +1,4 @@
-# Well, Oh Well
+# Well, Oh Well (WOW)
 
 A local Streamlit dashboard. **Inspect** ranks wells using point-in-time scores and shows the flag reasons and oil history. **Repair** chooses a portfolio subject to budget, crew-days, and one job per well. **Did it work?** shows oil production around a recorded repair and separates recorded events from comparable-job estimates.
 
