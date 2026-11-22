@@ -220,41 +220,6 @@ def inspection_map(records, widget_key, use_basemap):
     st.pydeck_chart(deck, height=390, key=chart_key, selection_mode="single-object",
                     on_select=lambda: select_chart_well(chart_key, "", widget_key, map_chart=True))
 
-def location_plot(records, widget_key):
-    points = [
-        dict(
-            row,
-            point_color="#{:02x}{:02x}{:02x}".format(*row["marker_color"][:3]),
-            point_opacity=row["marker_color"][3] / 255,
-            point_size=3 * row["marker_size"] ** 2,
-        )
-        for row in records
-    ]
-    pick = alt.selection_point(
-        name="pick_location", fields=["well_id"], toggle=False, clear=False
-    )
-    chart = alt.Chart(alt.Data(values=points)).mark_circle(
-        stroke="white", strokeWidth=1
-    ).encode(
-        x=alt.X("longitude:Q", title="Longitude", scale=alt.Scale(zero=False)),
-        y=alt.Y("latitude:Q", title="Latitude", scale=alt.Scale(zero=False)),
-        color=alt.Color("point_color:N", scale=None, legend=None),
-        opacity=alt.Opacity("point_opacity:Q", scale=None, legend=None),
-        size=alt.Size("point_size:Q", scale=None, legend=None),
-        tooltip=[
-            alt.Tooltip("well_id:N", title="Well"),
-            alt.Tooltip("risk:Q", title="30-day failure risk", format=".1%"),
-        ],
-    ).add_params(pick).properties(height=345)
-
-    chart_key = f"{widget_key}_locations"
-    st.altair_chart(
-        chart, use_container_width=True, key=chart_key,
-        selection_mode="pick_location",
-        on_select=lambda: select_chart_well(chart_key, "pick_location", widget_key),
-    )
-
-
 def risk_bars(records, widget_key):
     selected = alt.selection_point(name="pick_well", fields=["well_id"], toggle=False, clear=False)
     has_selection = any(row["is_selected"] for row in records)
@@ -336,14 +301,9 @@ if section == "Inspect":
             st.caption("Surface locations · " + ("synthetic demo" if sample else "daily_production.parquet"))
             if mapped:
                 with st.expander("Map settings"):
-                    use_basemap = st.toggle(
-                        "Show street basemap", value=False, key="inspect_street_basemap",
-                        help="Turn off to use the offline well locations plot.",
-                    )
-                if use_basemap:
-                    inspection_map(mapped, widget_key, True)
-                else:
-                    location_plot(mapped, widget_key)
+                    use_basemap = st.toggle("Show street basemap", value=True,
+                                            help="Loads background map tiles over the internet.")
+                inspection_map(mapped, widget_key, use_basemap)
                 st.caption("Risk colors: green below 25%, amber 25% to below 50%, rust 50% and above.")
                 if len(mapped) < len(top):
                     st.caption(f"{len(top) - len(mapped)} ranked wells lack valid surface coordinates.")
