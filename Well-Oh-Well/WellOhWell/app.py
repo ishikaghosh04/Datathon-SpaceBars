@@ -3,6 +3,7 @@ import math
 import os
 from datetime import date, timedelta
 from pathlib import Path
+from urllib.parse import quote, urlencode
 
 import altair as alt
 import pydeck as pdk
@@ -10,7 +11,8 @@ import streamlit as st
 
 from backend import (BASE_MARGIN, COSTS, DEMO_DATE, ESTIMATES, REPAIR_TYPES, canary_read,
                      from_parquet, join_inputs, load_csv, optimize, production_drop,
-                     verify_scenarios, well_locations)
+                     verify_scenarios, well_key, well_locations)
+from failure_explorer import show_failure_explorer
 
 HERE = Path(__file__).resolve().parent
 SAMPLE = HERE / "sample"
@@ -64,7 +66,10 @@ except (OSError, ValueError) as exc:
 
 ranked = sorted(rows, key=lambda r: (r["failure_risk"] is None, -(r["failure_risk"] or 0)))
 wells = list(dict.fromkeys(row["well_id"] for row in ranked))
-section = st.sidebar.radio("Section", ["Inspect", "Repair", "Did it work?"])
+sections = ["Inspect", "Repair", "Did it work?"] if sample else [
+    "Inspect", "Failure Explorer", "Repair", "Did it work?",
+]
+section = st.sidebar.radio("Section", sections, key="dashboard_section")
 source_choice = st.sidebar.radio("Production data", ["Local Parquet", "Canary Read API"]) if not sample else ""
 if len(dates) == 1:
     st.sidebar.caption("The estimates file has one scored date. Add dated snapshots for more replay dates.")
@@ -273,9 +278,37 @@ def risk_bars(records, widget_key):
                     on_select=lambda: select_chart_well(chart_key, "pick_well", widget_key))
 
 
+DEMO_WELL = "101143404125W300"
+
+
+def axiom_link(well, end):
+    server = os.getenv("WOW_AXIOM_URL", "https://localhost").rstrip("/")
+    if well == DEMO_WELL:
+        params = {"Application": "Private/Well, Oh Well - Well History"}
+    else:
+        try:
+            mappings = json.loads((directory / "axiom_wells.json").read_text(encoding="utf-8-sig"))
+            tags = mappings[well_key(well)]
+        except (OSError, ValueError, KeyError, TypeError):
+            return
+        if not isinstance(tags, list) or not tags or not all(isinstance(tag, str) for tag in tags):
+            return
+        params = {"chart": "New", "sourcetag[]": tags, "timemode": "Pause",
+                  "timeend": f"{end:%m/%d/%Y} 11:59:59 PM", "timeduration": "105d"}
+    st.link_button("Open production history in Axiom", f"{server}/#{urlencode(params, doseq=True, quote_via=quote)}")
+
+
+def open_explorer_well(well):
+    st.session_state["pending_explorer_well"] = well
+    st.session_state["dashboard_section"] = "Inspect"
+
+
 if section == "Inspect":
     st.header("Inspect")
-    flagged = st.toggle("Flagged wells only")
+    pending_well = st.session_state.pop("pending_explorer_well", None)
+    if pending_well:
+        st.session_state["inspect_flagged_only"] = False
+    flagged = st.toggle("Flagged wells only", key="inspect_flagged_only")
     well_rows = {}
     for row in ranked:
         if not flagged or row["flag_reason"].strip():
@@ -287,8 +320,13 @@ if section == "Inspect":
                 "25–49%" if row["failure_risk"] >= .25 else "Below 25%")
            for well, row in well_rows.items() if row["failure_risk"] is not None][:10]
     widget_key = f"inspect_well_{mode}_{cutoff}_{flagged}"
-    if well_rows and st.session_state.get(widget_key) not in well_rows:
-        st.session_state[widget_key] = next(iter(well_rows))
+    remembered = st.session_state.get(f"last_inspected_well_{sample}")
+    requested = pending_well or remembered
+    matching_well = next((key for key in well_rows if well_key(key) == well_key(requested)), None)
+    extra_well = requested if requested and not matching_well and not flagged and not sample else None
+    options = [*well_rows, *([extra_well] if extra_well else [])]
+    if options and (pending_well or st.session_state.get(widget_key) not in options):
+        st.session_state[widget_key] = matching_well or extra_well or options[0]
 
     if sample:
         positions = [(53.24, -110.17), (53.29, -110.04), (53.31, -109.97), (53.23, -109.91)]
@@ -355,18 +393,29 @@ if section == "Inspect":
             "Oil lost (m3/day)": row["oil_lost_per_day"],
         } for well, row in well_rows.items()], hide_index=True, use_container_width=True)
 
-    if not sample and st.toggle("Show the imported Canary demo well"):
+    if not sample and not pending_well and st.toggle("Show the imported Canary demo well"):
         st.caption("Well 101143404125W300 is the imported Canary sample. It has no score in the team snapshot.")
-        demo_well = "101143404125W300"
+        demo_well = DEMO_WELL
+        axiom_link(demo_well, DEMO_DATE)
         first, last = DEMO_DATE - timedelta(days=30), DEMO_DATE + timedelta(days=30)
         if not st.checkbox("Show production after the demo date", key="show_demo_well_later"):
             last = DEMO_DATE
         points, source = timeline_data(demo_well, first, last)
         chart(points, source, DEMO_DATE, "Recorded failure / demo date")
-    elif well_rows:
+    elif options:
         st.subheader("Selected well")
-        well = st.selectbox("Well to inspect", list(well_rows), key=widget_key)
-        row = well_rows[well]
+        well = st.selectbox("Well to inspect", options, key=widget_key)
+        st.session_state[f"last_inspected_well_{sample}"] = well
+        if not sample:
+            axiom_link(well, cutoff)
+        row = well_rows.get(well)
+        if row is None:
+            st.caption("This well has historical records. No risk score is available for this replay date.")
+            points, source = timeline_data(well, cutoff - timedelta(days=104), cutoff)
+            chart(points, source, cutoff, "Replay date")
+            st.subheader("Recorded failures through the replay date")
+            show_events(events(well, cutoff - timedelta(days=104), cutoff), "Failure type")
+            st.stop()
         if well in locations:
             st.caption(f"{locations[well]['name']} · {locations[well]['area']}")
         risk, rank, oil = st.columns(3)
@@ -384,6 +433,10 @@ if section == "Inspect":
         if st.checkbox("Reveal later outcomes"):
             st.subheader("Recorded failures in the next 30 days")
             show_events(events(well, cutoff + timedelta(days=1), cutoff + timedelta(days=30)), "Failure type")
+
+
+elif section == "Failure Explorer":
+    show_failure_explorer(directory / "production_failures.parquet", cutoff, open_explorer_well)
 
 
 elif section == "Repair":

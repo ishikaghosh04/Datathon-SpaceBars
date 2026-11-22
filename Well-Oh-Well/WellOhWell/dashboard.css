@@ -183,3 +183,16 @@
 .wow-footer p {
     margin: 0.4rem 0 0;
 }
+
+[data-testid="stMain"] {
+    background-color: #f7f5ef;
+}
+
+[data-testid="stMain"] [data-testid="stHeading"] h1,
+[data-testid="stMain"] [data-testid="stHeading"] h2 {
+    color: #252d29;
+}
+
+[data-testid="stMain"] [data-testid="stHeading"] h1::before {
+    background: #287d76;
+}

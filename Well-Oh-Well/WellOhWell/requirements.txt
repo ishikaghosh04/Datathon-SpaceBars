@@ -5,3 +5,4 @@ scipy>=1.13,<2
 tzdata
 
 pydeck>=0.9,<1
+plotly>=5.24,<7

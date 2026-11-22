@@ -74,3 +74,47 @@ The workbook rounds some intermediate display values. The verification compares 
 - If the street basemap cannot load, turn it off in **Map settings**. The well layer is local. The optional basemap retrieves street tiles from CARTO.
 - In **Repair**, the contribution bars show up to ten selected jobs by estimated net gain.
 - In **Did it work?**, the paired bars compare observed daily production before and after the repair. Check the observed day counts when comparing partial windows.
+
+## Failure Explorer and Axiom Well History
+
+In Streamlit, choose **Team data**, set **Datathon folder** to the directory that
+contains the authorized Parquet files, and choose **Failure Explorer**. The date
+picker ends at the selected replay date. The area, date, and cause filters drive
+the same Sankey, donut, and well table. Select a row, then *Inspect selected well*.
+
+To prepare local Axiom history from PowerShell in the repository root:
+
+~~~powershell
+$dataDir = 'C:\Users\ishik\OneDrive\Desktop\Datathon'
+$staging = Join-Path $env:TEMP 'WellOhWell-Axiom'
+python .\Well-Oh-Well\WellOhWell\export_axiom_history.py $dataDir $staging
+~~~
+
+The defaults select three Cactus Lake wells with corrosion records and cover
+March 18 through June 30, 2026. Use repeated `--well` arguments to choose other
+wells and `--end YYYY-MM-DD` to change the replay date. The export places
+daily totals at noon, keeps actual zero readings, and omits missing values.
+The CSV format matches this PC's existing `WellOhWell` CSV Collector route.
+
+1. With the Canary CSV Collector running, copy `well_history_import.csv` from
+   the staging folder to the configured incoming folder. On this PC that is
+   `C:\CanaryImport\Incoming`. In Axiom's Add Trends menu, check that the
+   imported `Wells` branch has oil, downtime, and rod torque tags for well
+   `106020703627W300`. If your server or dataset name differs, use
+   `--tag-prefix ServerName.DatasetName` when exporting.
+2. After confirming the tags, copy `axiom_wells.json` from staging into
+   `$dataDir`. Inspect now offers **Open production history in Axiom** on those
+   well details. The link uses a paused 105-day view ending on the selected
+   replay date. The existing demo well has a link to the saved Well History application.
+3. The [Well History application](https://localhost/#Application=Private%2FWell%2C%20Oh%20Well%20-%20Well%20History)
+   is saved on this PC under the private `canarydemo` account. It contains
+   the demo well's oil trend and a return link to `http://localhost:8502`.
+   To add the imported wells to the application itself, add a screen and
+   use **Add Trends** to bind the imported tags. Use separate trend bands
+   for oil (m³/day), downtime (hours/day), and rod torque (ft-lb).
+   Set `WOW_AXIOM_URL` before starting Streamlit if Axiom is hosted on another
+   server. Localhost links are for a demo on this PC.
+
+Demo sequence: **2026-06-30 → Cactus Lake → Corrosion → 106020703627W300 →
+Inspect selected well → Open production history in Axiom**. Back in Streamlit,
+open **Repair** and switch from **Normal Week** to **Tight Week**.
