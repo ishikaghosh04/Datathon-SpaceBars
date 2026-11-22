@@ -350,11 +350,12 @@ elif section == "Repair":
             spend = sum(r["repair_cost"] for r in plan)
             crew = sum(r["crew_days"] for r in plan)
             gain = sum(r["net_gain"] for r in plan)
-            metrics = st.columns(4)
-            metrics[0].metric("Jobs picked", len(plan))
-            metrics[1].metric("Budget used", f"C${spend:,.2f}")
-            metrics[2].metric("Crew-days used", f"{crew:.2f}")
-            metrics[3].metric("Est. 90-day net gain", f"C${gain:,.2f}")
+            jobs_col, budget_col = st.columns(2)
+            crew_col, gain_col = st.columns(2)
+            jobs_col.metric("Jobs picked", len(plan))
+            budget_col.metric("Budget used", f"C${spend:,.2f}")
+            crew_col.metric("Crew-days used", f"{crew:.2f}")
+            gain_col.metric("Est. 90-day net gain", f"C${gain:,.2f}")
             st.caption(f"Remaining budget · C${max(0, budget - spend):,.2f}")
             if plan:
                 selected_jobs = [
@@ -401,14 +402,14 @@ else:
                            "Days observed": len(values)}
                           for period, values in [("Before", before), ("After", after)]]
             summary = alt.Chart(alt.Data(values=comparison)).mark_bar(cornerRadiusEnd=4).encode(
-                x=alt.X("Mean oil (m³/day):Q"),
+                x=alt.X("Mean oil (m3/day):Q", axis=alt.Axis(tickCount=6)),
                 y=alt.Y("Period:N", title=None, sort=["Before", "After"]),
                 color=alt.Color("Period:N", legend=None,
                                 scale=alt.Scale(domain=["Before", "After"], range=["#837565", "#236D38"])),
                 tooltip=["Period:N", alt.Tooltip("Mean oil (m³/day):Q", format=".2f"),
                          "Days observed:Q"],
-            ).properties(height=105).configure_view(strokeOpacity=0)
-            st.altair_chart(summary, use_container_width=True)
+            ).properties(height=120, autosize=alt.AutoSizeParams(type="fit-x", contains="padding"), padding={"left": 12, "right": 22, "top": 8, "bottom": 8}).configure_view(strokeOpacity=0)
+            st.altair_chart(summary, width="stretch", key="repair_oil_comparison")
             st.caption("Observed daily averages within 30 days on each side. The repair day is excluded. "
                        "The after period can be shorter when replay hides later dates.")
         st.subheader("Recorded failures 8–90 days after repair")

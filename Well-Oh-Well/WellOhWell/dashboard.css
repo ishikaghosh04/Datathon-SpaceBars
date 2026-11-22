@@ -74,3 +74,52 @@
     from { opacity: 0.55; transform: translateY(4px); }
     to { opacity: 1; transform: translateY(0); }
 }
+.st-key-repair_oil_comparison[data-testid="stVegaLiteChart"],
+.st-key-repair_oil_comparison [data-testid="stVegaLiteChart"] {
+    padding: 0;
+}
+/* Animated gradient behind the dashboard title */
+[data-testid="stMain"] {
+    position: relative;
+    isolation: isolate;
+}
+
+[data-testid="stMain"]::before {
+    content: "";
+    position: absolute;
+    inset: 0 -10% auto;
+    height: clamp(260px, 36vw, 420px);
+    pointer-events: none;
+    z-index: 0;
+
+    background:
+        radial-gradient(ellipse 53% 72% at 20% 0%,
+            rgb(35 109 56 / 22%), transparent 78%),
+        radial-gradient(ellipse 60% 80% at 77% 2%,
+            rgb(215 223 213 / 92%), transparent 76%),
+        linear-gradient(to bottom,
+            rgb(35 109 56 / 8%), transparent 82%);
+}
+
+[data-testid="stMainBlockContainer"] {
+    position: relative;
+    z-index: 1;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-testid="stMain"]::before {
+        animation:
+            wow-wave-arrive 900ms ease-out both,
+            wow-wave-drift 12s ease-in-out 900ms infinite alternate;
+    }
+}
+
+@keyframes wow-wave-arrive {
+    from { transform: translateY(-45%); opacity: 0; }
+    to   { transform: translateY(0); opacity: 1; }
+}
+
+@keyframes wow-wave-drift {
+    from { transform: translate(0, 0) scale(1); }
+    to   { transform: translate(5%, 12px) scale(1.06, 0.94); }
+}
