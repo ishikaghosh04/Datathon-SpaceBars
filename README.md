@@ -1,120 +1,103 @@
-# Well, Oh Well (WOW)
+# Well, Oh Well
 
-A local Streamlit dashboard. **Inspect** ranks wells using point-in-time scores and shows the flag reasons and oil history. **Repair** chooses a portfolio subject to budget, crew-days, and one job per well. **Did it work?** shows oil production around a recorded repair and separates recorded events from comparable-job estimates.
+Well, Oh Well helps oilfield maintenance planners decide which wells to inspect, which repairs fit the crew's available time and budget, and what happened after past repairs. The Streamlit dashboard uses historical Strathcona data in Team mode and includes a synthetic walkthrough you can run immediately.
 
-## Run locally with Python 3.12
+[Quick start](#quick-start) · [Dashboard walkthrough](#dashboard-walkthrough) · [Team data](#team-data) · [Canary and Axiom](#canary-and-axiom) · [Repository guide](#repository-guide)
 
-Extract the GitHub ZIP. In VS Code, open `Well-Oh-Well/WellOhWell` inside the extracted repository. For the standalone app ZIP, open the extracted `WellOhWell` folder. The folder you open should contain both `app.py` and `requirements.txt`. Install [Python 3.12](https://www.python.org/downloads/) if needed, then open **Terminal → New Terminal**.
+## Quick start
+
+Clone or download this repository. Open [`Well-Oh-Well/WellOhWell`](Well-Oh-Well/WellOhWell) in VS Code. The app folder contains `app.py` and `requirements.txt`. For the standalone archive, open the extracted folder containing those files. Use [Python 3.12](https://www.python.org/downloads/).
 
 ### Windows PowerShell
 
-~~~powershell
-py -3.12 --version
+```powershell
 py -3.12 -m venv .venv
 .\.venv\Scripts\python.exe -m pip install -r requirements.txt
 .\.venv\Scripts\python.exe -m streamlit run app.py --server.address 127.0.0.1
-~~~
+```
 
-If `py` is unavailable, try `python --version`. If it reports Python 3.12, use `python -m venv .venv` and then run the same two `.venv` commands. If neither command finds Python 3.12, install it and reopen VS Code. These commands invoke the environment's Python directly, so PowerShell activation is unnecessary.
+If Windows has Python 3.12 on the `python` command and `py` is unavailable, use `python -m venv .venv` for the first command.
 
 ### macOS or Linux
 
-~~~sh
-python3.12 --version
+```sh
 python3.12 -m venv .venv
 ./.venv/bin/python -m pip install -r requirements.txt
 ./.venv/bin/python -m streamlit run app.py --server.address 127.0.0.1
-~~~
+```
 
-Open the **Local URL** printed in the terminal. Start in **Sample · synthetic**, which works with the bundled sample files. For **Team data**, set **Datathon folder** in the sidebar to the folder with `Sam`, `Seerat`, and the three Parquet files. The GitHub ZIP omits the raw Parquet files. Use your authorized local copies for Team data. On subsequent runs, use just the Streamlit command for your operating system.
+Open the **Local URL** printed in the terminal. On your first visit, choose **Sample · synthetic** in the sidebar. Sample mode includes **Inspect**, **Repair**, and **Did it work?**. To see **Failure Explorer** and the historical team inputs, follow [Team data](#team-data). Once dependencies are installed, rerun the last command to start the app again.
 
-## Team inputs
+## Dashboard walkthrough
 
-- Estimates: Datathon/well_estimates.csv or Datathon/Sam/well_estimates.csv. Use the existing schema, including as_of_date, well_id, job_type, oil_lost_per_day, failure_risk, expected_extra_oil, repeat_failure_rate, comparable_job_count and flag_reason. The supplied file contains one scored date, 2026-06-30. For additional date choices, append scored snapshots with their original dates. The app requires an exact date match and never backfills earlier dates from later scores.
-- Repairs: The app includes `data/repair_inputs_rod.csv` for the June 30 team snapshot. It uses Seerat's median field cost estimates and median elapsed job durations as a proxy for crew-days. An export in the selected Datathon directory or its Seerat subfolder takes precedence. Expected columns are `well_id`, `job_type`, `repair_cost` (CAD), and `crew_days`. Rename `repair_cost_cad` to `repair_cost` if you use a fresh export. Include `as_of_date` for date-specific estimates. The app normalizes well IDs, validates unique keys, and excludes jobs missing cost, crew duration, or expected oil.
-- History: daily_production.parquet, production_failures.parquet, and well_jobs.parquet in Datathon. Team failure outcomes come from the explicit failure log. They may differ from model labels, which also included qualifying repair-driven episodes. The imported single-well tag is separate from the ranked wells because its well is absent from the available score snapshot.
-- Oil margin is a user-selected scenario assumption. The default is the base amount from Seerat's workbook. Do not describe it as a June 30 value known at that date. Compare plans with the team if presenting a strictly point-in-time economics scenario.
+Use **Data mode**, **Replay date**, and **Section** in the sidebar to set the context for your walkthrough.
 
-## Canary Read API
+| Section | Where to click | How to read it |
+| --- | --- | --- |
+| **Inspect** | Click a map marker or ranking bar, or use **Well to inspect**. Expand **Full inspection ranking** for the table. | The map and bars show up to ten ranked wells. The selected well's panel shows the estimated 30-day failure risk, why the well was flagged, estimated oil lost, and its production history through the replay date. **Reveal later outcomes** shows recorded failures in the following 30 days when records are available. |
+| **Failure Explorer** | In **Team data**, choose a **Failure date range**, **Operating area**, and **Reported cause**. Select a row under **Affected wells**, then click **Inspect selected well**. | The Sankey follows operating area → reported cause → failure type. Band width represents the number of recorded failures. The donut shows the failure-type share for the same filters. Dates are limited by the replay date. |
+| **Repair** | In **Team data**, switch between **Normal Week**, **Tight Week**, and **Custom**. Sample mode uses custom limits. | The planner selects up to one job per well within the budget and crew-days. The plan shows selected jobs, estimated spend and net gain, and which jobs contribute the most. Oil margin is a scenario assumption. |
+| **Did it work?** | Select a well and a recorded rod repair. Review the production comparison and follow-up records. | Compare observed daily oil before and after the repair and check the number of observed days in each window. Recorded failures 8–90 days after repair and repeat-failure estimates from comparable jobs appear alongside each other. |
 
-1. Use an event-supplied Read API host and read-only token. For the local environment already used to import the CSV, the Views web API is configured on port 55236. The base URL must be HTTPS and should omit /api/v2. Obtain a trusted CA PEM file if the local certificate is not already trusted.
-2. Copy canary_tags.example.json into the Datathon data folder as canary_tags.json. Verify the complete Views tag path in the target environment. The example maps the real well behind the locally imported DemoWell.Oil_m3 tag. A different server may use a different view name.
-3. In the same PowerShell session in which you start Streamlit, set the environment variables below. Enter the token at the masked prompt. Keep the token out of chat, source control, and the ZIP.
+### Try the Team data demo
 
-~~~powershell
-$env:CANARY_READ_URL = 'https://localhost:55236'
-$env:CANARY_API_TOKEN = Read-Host 'Canary Read API token' -MaskInput
-# Set this only if your installation needs a CA PEM file.
-# $env:CANARY_CA_FILE = 'C:\path\to\trusted-ca.pem'
-~~~
+1. Select **Team data** and **June 30, 2026**. In **Inspect**, choose one of the ranked wells and review its flag reason and oil history.
+2. In **Failure Explorer**, choose **Cactus Lake** and **Corrosion**. Watch the Sankey, donut, and well table update. Select a well and open it in **Inspect**.
+3. In **Repair**, compare **Normal Week** (C$105,000 and 9.7 crew-days) with **Tight Week** (C$73,500 and 6.8 crew-days). Compare which jobs fit and the estimated gain under each scenario.
+4. In **Did it work?**, open an available recorded repair and look for changes in the observed before-and-after oil production.
 
-In Team data, choose **Canary Read API** as the production source. On Inspect, enable **Show the imported Canary demo well** unless you have mapped a ranked well. Confirm that the chart caption says **Canary Read API**. If the request fails, the app labels the local Parquet fallback explicitly. Dates are interpreted in America/Edmonton by default. CANARY_TIME_ZONE can override it.
+If the street map is blank, open **Map settings** and turn off **Show street basemap**. The offline plot uses local well coordinates and supports well selection.
 
-The production-drop metric compares a trailing median (days -104 through -14) with the last seven calendar days. It requires at least 14 baseline readings and all seven recent days. It does not apply the model's operating-hours filter. The locally imported series is too short to meet that baseline at the demo date. The API call reads daily volume tags, skips bad or uncertain quality, and follows pagination.
+## Team data
 
-## Live demo checklist
+The raw Strathcona Parquet files are distributed separately. Use authorized copies and set **Datathon folder** in the sidebar to the directory containing your inputs. You can also set `WOW_DATA` before starting the app to prefill the folder.
 
-1. In Sample mode, switch between the two replay dates. Select a flagged well, confirm the chart stops at the selected date, then reveal subsequent events.
-2. In Team data on June 30, confirm the ranked well table and flag reasons load. Switch the production source to Canary and confirm the source caption on the imported-well chart. Enable later production to show the full imported history.
-3. In Team data, open Repair and switch between **Normal Week** (C$105,000 and 9.7 crew-days) and **Tight Week** (C$73,500 and 6.8 crew-days). At the default margin, expect 33 and 24 jobs, respectively. Choose **Custom** to enter your own limits. Check that spend and crew use stay within limits and no well repeats.
-4. Open Did it work?, select a well and a recorded repair. Check the repair date marker, follow-up records, and comparable-job count.
-5. Rerun the two independent business checks with the same Python environment:
+| Input | Location inside the data folder | Used for |
+| --- | --- | --- |
+| `well_estimates.csv` | Data folder root or `Sam/`. The repository includes [the team's example snapshot](Sam/well_estimates.csv). | Available replay dates, risk ranking, and comparable repair estimates. |
+| `daily_production.parquet` | Data folder root | Production history and well locations. |
+| `production_failures.parquet` | Data folder root | Failure Explorer and recorded follow-up failures. |
+| `well_jobs.parquet` | Data folder root | Recorded jobs and repair dates. |
+| `repair_inputs_rod.csv` or `repair_inputs.csv` | Data folder root or `Seerat/` | Repair cost in CAD and crew-days for the planner. |
 
-~~~powershell
-.\.venv\Scripts\python.exe verify.py
-~~~
+The supplied Team snapshot is scored as of **June 30, 2026**. The replay date menu comes from the `as_of_date` values in the estimates file. Inspect and historical replay can load without a repair cost export. To enable the repair planner, provide `well_id`, `job_type`, `repair_cost`, and `crew_days`. Include `as_of_date` for date-specific repair estimates. See [Repair economics](Seerat/repair_economics.md) for how the team estimated costs and used historical job durations as a proxy for crew-days.
 
-On macOS or Linux, run `./.venv/bin/python verify.py`.
+## Canary and Axiom
 
-The workbook rounds some intermediate display values. The verification compares the recomputed gains against the workbook within one cent and requires exact candidate matches.
+Start with **Local Parquet** in the Streamlit sidebar for the standard walkthrough. There are two optional Canary integrations.
 
-## Visual inspection workflow
+### Open a well in Axiom
 
-- In **Inspect**, click a map pin or a ranking bar to open that well's risk, flag reason, area, and oil timeline. The well dropdown includes all wells in the current filter. The map and bars show up to 10 wells. Pin locations in Team data use the latest valid surface coordinates available through the replay date. Sample mode uses synthetic locations.
-- If the street basemap cannot load, turn it off in **Map settings**. The well layer is local. The optional basemap retrieves street tiles from CARTO.
-- In **Repair**, the contribution bars show up to ten selected jobs by estimated net gain.
-- In **Did it work?**, the paired bars compare observed daily production before and after the repair. Check the observed day counts when comparing partial windows.
+For mapped wells, **Inspect → Open production history in Axiom** launches an Axiom chart of the imported measurements. To prepare your own connections, run the following from the app folder in the Python environment you used to start Streamlit. Replace the example paths and tag prefix with yours.
 
-## Failure Explorer and Axiom Well History
-
-In Streamlit, choose **Team data**, set **Datathon folder** to the directory that
-contains the authorized Parquet files, and choose **Failure Explorer**. The date
-picker ends at the selected replay date. The area, date, and cause filters drive
-the same Sankey, donut, and well table. Select a row, then *Inspect selected well*.
-
-To prepare local Axiom history from PowerShell in the repository root:
-
-~~~powershell
-$dataDir = 'C:\Users\ishik\OneDrive\Desktop\Datathon'
+```powershell
+$dataDir = 'C:\path\to\Datathon'
 $staging = Join-Path $env:TEMP 'WellOhWell-Axiom'
-python .\Well-Oh-Well\WellOhWell\export_axiom_history.py $dataDir $staging
-~~~
+.\.venv\Scripts\python.exe export_axiom_history.py $dataDir $staging --tag-prefix 'ServerName.DatasetName'
+```
 
-The defaults select three Cactus Lake wells with corrosion records and cover
-March 18 through June 30, 2026. Use repeated `--well` arguments to choose other
-wells and `--end YYYY-MM-DD` to change the replay date. The export places
-daily totals at noon, keeps actual zero readings, and omits missing values.
-The CSV format matches this PC's existing `WellOhWell` CSV Collector route.
+1. Import the generated `well_history_import.csv` with your Canary CSV Collector. It contains timestamped oil, downtime, and rod-torque readings for three Cactus Lake wells by default. Use repeated `--well` flags or `--end YYYY-MM-DD` to change the export.
+2. In Axiom, browse **Add Trends** and confirm the imported well tags match the prefix used in the export. Copy `axiom_wells.json` from staging into the data folder selected in Streamlit.
+3. If Axiom is hosted elsewhere, set `WOW_AXIOM_URL` to your server's base URL before starting Streamlit. The default is `https://localhost`. A mapped well opens a paused, 105-day history ending on the selected replay date, subject to the dates available in Canary.
 
-1. With the Canary CSV Collector running, copy `well_history_import.csv` from
-   the staging folder to the configured incoming folder. On this PC that is
-   `C:\CanaryImport\Incoming`. In Axiom's Add Trends menu, check that the
-   imported `Wells` branch has oil, downtime, and rod torque tags for well
-   `106020703627W300`. If your server or dataset name differs, use
-   `--tag-prefix ServerName.DatasetName` when exporting.
-2. After confirming the tags, copy `axiom_wells.json` from staging into
-   `$dataDir`. Inspect now offers **Open production history in Axiom** on those
-   well details. The link uses a paused 105-day view ending on the selected
-   replay date. The existing demo well has a link to the saved Well History application.
-3. The [Well History application](https://localhost/#Application=Private%2FWell%2C%20Oh%20Well%20-%20Well%20History)
-   is saved on this PC under the private `canarydemo` account. It contains
-   the demo well's oil trend and a return link to `http://localhost:8502`.
-   To add the imported wells to the application itself, add a screen and
-   use **Add Trends** to bind the imported tags. Use separate trend bands
-   for oil (m³/day), downtime (hours/day), and rod torque (ft-lb).
-   Set `WOW_AXIOM_URL` before starting Streamlit if Axiom is hosted on another
-   server. Localhost links are for a demo on this PC.
+The team's local Axiom demo includes **Well History** and a separate **Production Overview** application. Production Overview has a downtime donut gauge, an oil circular gauge, a torque-versus-oil scatter plot, and a weekly downtime bar chart, with **Full history**, **June**, and **July** views. These are saved applications on the team's Canary instance. The repository includes the export script and demo oil CSV for setting up your own instance.
 
-Demo sequence: **2026-06-30 → Cactus Lake → Corrosion → 106020703627W300 →
-Inspect selected well → Open production history in Axiom**. Back in Streamlit,
-open **Repair** and switch from **Normal Week** to **Tight Week**.
+### Read oil history inside Streamlit
+
+1. Copy [`canary_tags.example.json`](Well-Oh-Well/WellOhWell/canary_tags.example.json) into your data folder as `canary_tags.json`. Replace the example entry with your well ID and complete Canary Views tag path.
+2. In the same terminal used to launch Streamlit, set `CANARY_READ_URL` to the HTTPS base URL for your Read API and `CANARY_API_TOKEN` to a read-only token. Use the base URL without `/api/v2`. For a local instance, use the Views API port configured by your administrator. Set `CANARY_CA_FILE` if your deployment uses a custom trusted CA bundle. Keep tokens out of the repository.
+3. In **Team data**, choose **Canary Read API** under **Production data**. Select a mapped well, or enable **Show the imported Canary demo well** when using the example tag. Check the production chart caption to confirm whether it used Canary or fell back to local Parquet.
+
+## Repository guide
+
+| Path | What you'll find |
+| --- | --- |
+| [`Well-Oh-Well/WellOhWell/`](Well-Oh-Well/WellOhWell) | Streamlit app, data loading and repair planning, Failure Explorer, Axiom export script, and bundled sample inputs. |
+| [`Sam/`](Sam) | Risk analysis, model outputs, and scored well estimates. Start with the [analysis notes](Sam/README_analysis.md). |
+| [`Seerat/`](Seerat) | Repair economics, scripts for preparing model inputs, and the comparison workbook. Start with the [economics notes](Seerat/repair_economics.md). |
+| [`Well Oh Well.twbx`](Well%20Oh%20Well.twbx) | Tableau workbook. |
+| [`canary_demo_oil.csv`](canary_demo_oil.csv) | Timestamped daily oil readings for the Canary demo well. |
+
+### Check the sample repair calculations
+
+From the app folder, run `.\.venv\Scripts\python.exe verify.py` on Windows or `./.venv/bin/python verify.py` on macOS or Linux. The script checks the sample repair scenarios, including selected jobs and net gain, against the bundled worked example.
