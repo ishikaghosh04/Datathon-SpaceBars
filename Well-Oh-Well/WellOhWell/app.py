@@ -182,6 +182,15 @@ def select_chart_well(chart_key, selection_name, widget_key, map_chart=False):
         st.session_state[widget_key] = matches[0]["well_id"]
 
 
+def selected_well_predicate(selection_name):
+    return alt.LogicalOrPredicate(**{
+        "or": [
+            alt.FieldEqualPredicate(field="is_selected", equal=True),
+            alt.ParameterPredicate(param=selection_name, empty=False),
+        ]
+    })
+
+
 def risk_color(risk):
     if risk >= 0.50:
         return [160, 70, 44, 225]
@@ -227,7 +236,9 @@ def inspection_map(records, widget_key, use_basemap):
 
 
 def offline_inspection_map(records, widget_key):
-    selected = alt.selection_point(name="pick_map_well", fields=["well_id"],
+    selected_well = next((row["well_id"] for row in records if row["is_selected"]), "none")
+    selection_name = f"pick_map_well_{selected_well}"
+    selected = alt.selection_point(name=selection_name, fields=["well_id"],
                                    toggle=False, clear=False)
     has_selection = any(row["is_selected"] for row in records)
     locations = alt.Chart(alt.Data(values=records)).mark_point(filled=True, stroke="white",
@@ -240,7 +251,7 @@ def offline_inspection_map(records, widget_key):
                         scale=alt.Scale(domain=["50% and above", "25–49%", "Below 25%"],
                                         range=["#A0462C", "#AC6D24", "#236D38"])),
         opacity=alt.condition(
-            alt.datum.is_selected,
+            selected_well_predicate(selection_name),
             alt.value(1.0),
             alt.value(0.4 if has_selection else 1.0),
         ),
@@ -250,12 +261,15 @@ def offline_inspection_map(records, widget_key):
     ).add_params(selected).properties(height=390).configure_view(strokeOpacity=0)
     chart_key = f"{widget_key}_offline_map"
     st.altair_chart(locations, use_container_width=True, key=chart_key,
-                    selection_mode="pick_map_well",
-                    on_select=lambda: select_chart_well(chart_key, "pick_map_well", widget_key))
+                    selection_mode=selection_name,
+                    on_select=lambda: select_chart_well(chart_key, selection_name, widget_key))
 
 
 def risk_bars(records, widget_key):
-    selected = alt.selection_point(name="pick_well", fields=["well_id"], toggle=False, clear=False)
+    selected_well = next((row["well_id"] for row in records if row["is_selected"]), "none")
+    selection_name = f"pick_well_{selected_well}"
+    selected = alt.selection_point(name=selection_name, fields=["well_id"],
+                                   toggle=False, clear=False)
     has_selection = any(row["is_selected"] for row in records)
     bars = alt.Chart(alt.Data(values=records)).mark_bar(cornerRadiusEnd=4).encode(
         x=alt.X("risk:Q", title="Predicted failure within 30 days",
@@ -265,7 +279,7 @@ def risk_bars(records, widget_key):
                         scale=alt.Scale(domain=["50% and above", "25–49%", "Below 25%"],
                                         range=["#A0462C", "#AC6D24", "#236D38"])),
         opacity=alt.condition(
-            alt.datum.is_selected,
+            selected_well_predicate(selection_name),
             alt.value(1.0),
             alt.value(0.4 if has_selection else 1.0),
         ),
@@ -274,8 +288,8 @@ def risk_bars(records, widget_key):
                  alt.Tooltip("reason:N", title="Flag reason")],
     ).add_params(selected).properties(height=345).configure_view(strokeOpacity=0)
     chart_key = f"{widget_key}_bars"
-    st.altair_chart(bars, use_container_width=True, key=chart_key, selection_mode="pick_well",
-                    on_select=lambda: select_chart_well(chart_key, "pick_well", widget_key))
+    st.altair_chart(bars, use_container_width=True, key=chart_key, selection_mode=selection_name,
+                    on_select=lambda: select_chart_well(chart_key, selection_name, widget_key))
 
 
 DEMO_WELL = "101143404125W300"
