@@ -14,6 +14,11 @@ from backend import (BASE_MARGIN, COSTS, DEMO_DATE, ESTIMATES, REPAIR_TYPES, can
 
 HERE = Path(__file__).resolve().parent
 SAMPLE = HERE / "sample"
+TEAM_COSTS = HERE / "data" / "repair_inputs_rod.csv"
+REPAIR_PRESETS = {
+    "Normal Week": (105_000, 9.7),
+    "Tight Week": (73_500, 6.8),
+}
 desktop = Path.home() / "OneDrive" / "Desktop" / "Datathon"
 default_data = desktop if (desktop / "Sam" / "well_estimates.csv").is_file() else HERE.parent
 st.set_page_config(page_title="Well, Oh Well", layout="wide")
@@ -32,7 +37,7 @@ else:
         estimates_file = directory / "Sam" / "well_estimates.csv"
     paths = [directory / "repair_inputs_rod.csv", directory / "Seerat" / "repair_inputs_rod.csv",
              directory / "repair_inputs.csv", directory / "Seerat" / "repair_inputs.csv"]
-    costs_file = next((p for p in paths if p.is_file()), paths[2])
+    costs_file = next((p for p in paths if p.is_file()), TEAM_COSTS)
     st.caption(f"Scores from {estimates_file.name} · Costs from {costs_file.name}")
     if not costs_file.is_file():
         st.warning("Team repair inputs are missing. Inspect and replay are available. "
@@ -197,26 +202,6 @@ def inspection_map(records, widget_key, use_basemap):
     st.pydeck_chart(deck, height=390, key=chart_key, selection_mode="single-object",
                     on_select=lambda: select_chart_well(chart_key, "", widget_key, map_chart=True))
 
-
-def location_plot(records, widget_key):
-    selected = alt.selection_point(name="pick_location", fields=["well_id"], toggle=False, clear=False)
-    points = alt.Chart(alt.Data(values=records)).mark_circle(stroke="white", strokeWidth=1).encode(
-        x=alt.X("longitude:Q", title="Longitude", scale=alt.Scale(zero=False),
-                axis=alt.Axis(format=".2f")),
-        y=alt.Y("latitude:Q", title="Latitude", scale=alt.Scale(zero=False),
-                axis=alt.Axis(format=".2f")),
-        color=alt.Color("band:N", title="30-day risk",
-                        scale=alt.Scale(domain=["50% and above", "25–49%", "Below 25%"],
-                                        range=["#A0462C", "#AC6D24", "#236D38"])),
-        size=alt.condition(selected, alt.value(240), alt.value(150)),
-        tooltip=[alt.Tooltip("rank:Q", title="Rank"), alt.Tooltip("well_id:N", title="Well"),
-                 alt.Tooltip("risk:Q", title="30-day risk", format=".1%")],
-    ).add_params(selected).properties(height=345).configure_view(strokeOpacity=0)
-    chart_key = f"{widget_key}_locations"
-    st.altair_chart(points, use_container_width=True, key=chart_key, selection_mode="pick_location",
-                    on_select=lambda: select_chart_well(chart_key, "pick_location", widget_key))
-
-
 def risk_bars(records, widget_key):
     selected = alt.selection_point(name="pick_well", fields=["well_id"], toggle=False, clear=False)
     bars = alt.Chart(alt.Data(values=records)).mark_bar(cornerRadiusEnd=4).encode(
@@ -276,12 +261,9 @@ if section == "Inspect":
             st.caption("Surface locations · " + ("synthetic demo" if sample else "daily_production.parquet"))
             if mapped:
                 with st.expander("Map settings"):
-                    use_basemap = st.toggle("Show street basemap", value=False,
-                                            help="Use the optional online street map instead of the offline plot.")
-                if use_basemap:
-                    inspection_map(mapped, widget_key, use_basemap)
-                else:
-                    location_plot(mapped, widget_key)
+                    use_basemap = st.toggle("Show street basemap", value=True,
+                                            help="Loads background map tiles over the internet.")
+                inspection_map(mapped, widget_key, use_basemap)
                 st.caption("Risk colors: green below 25%, amber 25% to below 50%, rust 50% and above.")
                 if len(mapped) < len(top):
                     st.caption(f"{len(top) - len(mapped)} ranked wells lack valid surface coordinates.")
@@ -331,11 +313,23 @@ if section == "Inspect":
 
 elif section == "Repair":
     st.header("Repair")
-    a, b, c = st.columns(3)
-    budget = a.number_input("Budget (C$)", min_value=0, value=15000 if sample else 105000, step=500)
-    crews = b.number_input("Crew-days", min_value=0.0, value=1.0 if sample else 9.7, step=0.1)
-    margin = c.number_input("Oil margin (C$/m³)", min_value=0.0,
-                            value=float(BASE_MARGIN), step=5.0, format="%.6f")
+    scenario = "Custom" if sample else st.radio(
+        "Repair scenario", [*REPAIR_PRESETS, "Custom"], horizontal=True, key="repair_scenario"
+    )
+    budget, crews = ((15_000, 1.0) if sample else
+                     REPAIR_PRESETS.get(scenario, REPAIR_PRESETS["Normal Week"]))
+    budget_column, crew_column, margin_column = st.columns(3)
+    if scenario == "Custom":
+        mode_key = "sample" if sample else "team"
+        budget = budget_column.number_input("Budget (C$)", min_value=0, value=budget, step=500,
+                                            key=f"repair_budget_{mode_key}")
+        crews = crew_column.number_input("Crew-days available", min_value=0.0, value=crews, step=0.1,
+                                         key=f"repair_crews_{mode_key}")
+    else:
+        budget_column.caption(f"Budget limit · C${budget:,}")
+        crew_column.caption(f"Crew-days available · {crews:g}")
+    margin = margin_column.number_input("Oil margin (C$/m³)", min_value=0.0,
+                                        value=float(BASE_MARGIN), step=5.0, format="%.6f")
     st.caption("The optimizer can leave budget and crew time unused.")
     missing = [r for r in rows if r["missing"]]
     excluded = [r for r in rows if any(r[k] is None for k in ("repair_cost", "crew_days", "expected_extra_oil"))]
@@ -357,10 +351,11 @@ elif section == "Repair":
             crew = sum(r["crew_days"] for r in plan)
             gain = sum(r["net_gain"] for r in plan)
             metrics = st.columns(4)
-            metrics[0].metric("Spend", f"CAD {spend:,.2f}")
-            metrics[1].metric("Crew-days", f"{crew:.2f}")
-            metrics[2].metric("Est. 90-day net gain", f"CAD {gain:,.2f}")
-            metrics[3].metric("Budget unused", f"CAD {max(0, budget - spend):,.2f}")
+            metrics[0].metric("Jobs picked", len(plan))
+            metrics[1].metric("Budget used", f"C${spend:,.2f}")
+            metrics[2].metric("Crew-days used", f"{crew:.2f}")
+            metrics[3].metric("Est. 90-day net gain", f"C${gain:,.2f}")
+            st.caption(f"Remaining budget · C${max(0, budget - spend):,.2f}")
             if plan:
                 selected_jobs = [
                     {"Well": p["well_id"], "Estimated net gain (C$)": p["net_gain"],
