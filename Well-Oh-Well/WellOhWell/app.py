@@ -191,10 +191,22 @@ def inspection_map(records, widget_key, use_basemap):
     extent = max(max(latitudes) - min(latitudes), max(longitudes) - min(longitudes), 0.02)
     zoom = min(12, max(4, 7.5 - math.log2(extent)))
     layer = pdk.Layer(
-        "ScatterplotLayer", id="well-points", data=records, pickable=True, auto_highlight=True,
-        get_position="[longitude, latitude]", get_fill_color="marker_color", get_radius="marker_size",
-        radius_units="pixels", radius_min_pixels=5, stroked=True, get_line_color=[255, 255, 255],
-        line_width_min_pixels=1.5,
+        "ScatterplotLayer",
+    id="well-points",
+    data=records,
+    pickable=True,
+    auto_highlight=True,
+    get_position="[longitude, latitude]",
+    get_fill_color="marker_color",
+    get_radius="marker_size",
+    radius_units="'pixels'",
+    radius_min_pixels=4,
+    radius_max_pixels=9,
+    stroked=True,
+    get_line_color=[255, 255, 255],
+    line_width_units="'pixels'",
+    line_width_min_pixels=1,
+    line_width_max_pixels=2,
     )
     deck = pdk.Deck(
         layers=[layer],
