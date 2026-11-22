@@ -1,0 +1,76 @@
+:root {
+    --wow-green: #236d38;
+    --wow-dark: #3d362d;
+    --wow-surface: #fff;
+    --wow-border: #d7dfd5;
+}
+
+[data-testid="stSidebar"] {
+    border-right: 1px solid var(--wow-border);
+}
+
+[data-testid="stMain"] [data-testid="stHeading"] h1 {
+    color: var(--wow-dark);
+    letter-spacing: -0.04em;
+}
+
+[data-testid="stMain"] [data-testid="stHeading"] h1::before {
+    content: "";
+    display: block;
+    width: 2.6rem;
+    height: 0.25rem;
+    margin-bottom: 0.6rem;
+    border-radius: 1rem;
+    background: var(--wow-green);
+}
+
+[data-testid="stMain"] [data-testid="stHeading"] h2 {
+    color: var(--wow-green);
+    letter-spacing: -0.025em;
+}
+
+[data-testid="stMetric"],
+[data-testid="stVegaLiteChart"] {
+    box-sizing: border-box;
+    min-width: 0;
+    max-width: 100%;
+    padding: 1rem;
+    background: var(--wow-surface);
+    border: 1px solid var(--wow-border);
+    border-radius: 0.85rem;
+}
+
+[data-testid="stVegaLiteChart"] {
+    overflow: hidden;
+}
+
+[data-testid="stMetricValue"] {
+    color: var(--wow-green);
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-testid="stVegaLiteChart"] {
+        animation: wow-enter 220ms ease-out both;
+    }
+
+    [data-testid="stButton"] button,
+    [data-testid="stExpandButton"] {
+        transition: background-color 150ms ease-out, border-color 150ms ease-out;
+    }
+
+    @media (hover: hover) {
+        [data-testid="stMetric"] {
+            transition: border-color 150ms ease-out, box-shadow 150ms ease-out;
+        }
+
+        [data-testid="stMetric"]:hover {
+            border-color: #9bb4a0;
+            box-shadow: 0 3px 12px rgb(35 109 56 / 10%);
+        }
+    }
+}
+
+@keyframes wow-enter {
+    from { opacity: 0.55; transform: translateY(4px); }
+    to { opacity: 1; transform: translateY(0); }
+}

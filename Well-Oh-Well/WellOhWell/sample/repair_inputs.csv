@@ -1,0 +1,6 @@
+well_id,job_type,repair_cost,crew_days
+DEMO01,Corod Rod Repair,4000,0.35
+DEMO01,Stick Rod Repair,6200,0.5
+DEMO02,Stick Rod Repair,5300,0.45
+DEMO03,Corod Rod Repair,3000,0.31
+DEMO04,Corod Rod Repair,2500,0.25

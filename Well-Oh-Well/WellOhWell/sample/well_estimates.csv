@@ -1,0 +1,11 @@
+well_id,job_type,as_of_date,oil_lost_per_day,failure_risk,expected_extra_oil,repeat_failure_rate,comparable_job_count,flag_reason
+DEMO01,Corod Rod Repair,2026-06-15,2.1,0.488,32,0.33,41,Prior inspection flag
+DEMO01,Stick Rod Repair,2026-06-15,2.1,0.488,35,0.52,29,Prior inspection flag
+DEMO02,Stick Rod Repair,2026-06-15,1.6,0.315,37,0.48,32,
+DEMO03,Corod Rod Repair,2026-06-15,0.8,0.165,19,0.34,23,
+DEMO04,Corod Rod Repair,2026-06-15,0,0.532,0,0.42,15,Prior inspection flag
+DEMO01,Corod Rod Repair,2026-06-30,2.1,0.65,32,0.33,41,Recent oil decline and downtime
+DEMO01,Stick Rod Repair,2026-06-30,2.1,0.65,35,0.52,29,Recent oil decline and downtime
+DEMO02,Stick Rod Repair,2026-06-30,1.6,0.42,37,0.48,32,Elevated model score
+DEMO03,Corod Rod Repair,2026-06-30,0.8,0.22,19,0.34,23,
+DEMO04,Corod Rod Repair,2026-06-30,0,0.71,0,0.42,15,Repeated downtime
