@@ -123,3 +123,63 @@
     from { transform: translate(0, 0) scale(1); }
     to   { transform: translate(5%, 12px) scale(1.06, 0.94); }
 }
+/* Keep the top wave within the page width. */
+[data-testid="stMain"]::before {
+    inset-inline: 0;
+}
+
+@keyframes wow-wave-drift {
+    from { transform: translateY(0) scaleY(1); }
+    to   { transform: translateY(12px) scaleY(0.94); }
+}
+
+/* Anchor the bottom wave to the end of the scrollable content. */
+[data-testid="stMainBlockContainer"] {
+    isolation: isolate;
+    padding-bottom: 9rem;
+}
+
+[data-testid="stMainBlockContainer"]::after {
+    content: "";
+    position: absolute;
+    inset: auto 0 0;
+    height: 220px;
+    z-index: -1;
+    pointer-events: none;
+
+    background:
+        radial-gradient(ellipse at 25% 100%,
+            rgb(35 109 56 / 22%), transparent 72%),
+        radial-gradient(ellipse at 75% 100%,
+            rgb(215 223 213 / 92%), transparent 76%);
+    background-repeat: no-repeat;
+    background-size: 135% 100%, 140% 100%;
+    background-position: 0% bottom, 100% bottom;
+}
+
+@media (prefers-reduced-motion: no-preference) {
+    [data-testid="stMainBlockContainer"]::after {
+        animation: wow-bottom-wave 12s ease-in-out infinite alternate;
+    }
+}
+
+@keyframes wow-bottom-wave {
+    from { background-position: 0% bottom, 100% bottom; }
+    to   { background-position: 100% bottom, 0% bottom; }
+}
+.wow-footer {
+    margin-top: 3rem;
+    padding: 1.25rem 1rem 0;
+    border-top: 1px solid var(--wow-border);
+    color: var(--wow-dark);
+    text-align: center;
+    font-size: 0.9rem;
+}
+
+.wow-footer strong {
+    color: var(--wow-green);
+}
+
+.wow-footer p {
+    margin: 0.4rem 0 0;
+}

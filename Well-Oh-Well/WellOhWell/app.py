@@ -23,7 +23,13 @@ desktop = Path.home() / "OneDrive" / "Desktop" / "Datathon"
 default_data = desktop if (desktop / "Sam" / "well_estimates.csv").is_file() else HERE.parent
 st.set_page_config(page_title="Well, Oh Well", layout="wide")
 st.html(HERE / "dashboard.css")
-st.title("Well, Oh Well")
+logo_col, title_col = st.columns([1, 10], vertical_alignment="center")
+
+with logo_col:
+    st.image(str(HERE / "assets" / "well_oh_well_logo.svg"), width=64)
+
+with title_col:
+    st.title("Well, Oh Well")
 st.caption("Inspection, repair planning, and historical replay")
 mode = st.sidebar.radio("Data mode", ["Sample · synthetic", "Team data"])
 sample = mode.startswith("Sample")
@@ -426,6 +432,13 @@ else:
                    "Comparable jobs": r["comparable_job_count"], "Expected extra oil (m³)": r["expected_extra_oil"]}
                   for r in rows if r["well_id"] == well], hide_index=True)
     st.caption("Comparable rates describe similar jobs over a 90-day follow-up window.")
+st.html("""
+<footer class="wow-footer">
+    <strong>© 2026 SpaceBar Team · Datathon’26</strong>
+    <p>Seerat Dua · Kripansh Rawal · Saptadwipa Mitra · Ishika Ghosh</p>
+    <p>All rights reserved by the SpaceBar Team.</p>
+</footer>
+""")
 
 
 
